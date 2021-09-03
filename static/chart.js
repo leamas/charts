@@ -51,28 +51,6 @@ function onBodyLoad() {
     var rulerCanvas;
 
 
-    /** Collision data: All intersecting sides. */
-    var collisions = [];  // list of [triangleSide, RulerSide].
-
-    /**
-     * Aligning data: the two sides closest to a align. If there is one
-     * collision, this is the one of the two intersecting sides with the
-     * smallest angle.
-     * If there is two collisions, this is the side which is not colliding
-     * i. e., is contained by the ruler.
-     *
-     * If no intersection this is either empty or two sides both
-     * intersecting the line between the triangle and the ruler center.
-     * Aligning refers to side numbers. First ruler side is nw -> ne, the
-     * rest counted clockwise. The first triangle side0  is the left -> right,
-     * one, next right -> top.
-     */
-    var align = {rulerSide: null, triangleSide: null, distance: null };
-
-    function isSameSide() {
-        return collision[0][0] == collision[1][0]
-    }
-
     // Ruler four sides, first one is the topmost nw -> ne.
     function rulerSideByIndex(ix) {
         switch (ix) {
@@ -101,127 +79,11 @@ function onBodyLoad() {
     }
 
 
-    /**
-     * Get point where two lines on form y = ax + c and y = bx + d
-     * intersect.
-     * @see: https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
-     */
-    function getIntersection(a, c, b, d) {
-        console.log("getIntersection, a:", a,
-                     ", b: ",  b , ", c: ",  c, ", d: ", d)
-        if (a == b)
-            console.error("Trying to intersect parallel lines");
-        return {
-            x: (d - c) / (a - b),
-            y: (a*d - b*c) / (a - b)
-        }
-    }
-
-
-    /**
-     * Check if the two lines (p0,p1) and (p2,p3) intersects where each
-     * p* item is a point. Returns true if intersect.
-     */
-    var isIntersecting = (function(){
-        // function as singleton so that closure can be used
-
-        // working variable are closed over so they do not need creation
-        // each time the function is called. This gives a significant
-        // performance boost.
-        var v1, v2, v3, cross, u1, u2;
-        v1 = {x : null, y : null}; // line p0, p1 as vector
-        v2 = {x : null, y : null}; // line p2, p3 as vector
-        v3 = {x : null, y : null}; // the line from p0 to p2 as vector
-
-        function isIntersecting(p0, p1, p2, p3) {
-            v1.x = p1.x - p0.x;
-            v1.y = p1.y - p0.y;
-            v2.x = p3.x - p2.x;
-            v2.y = p3.y - p2.y;
-            cross = v1.x * v2.y - v1.y * v2.x;
-            if (cross === 0) {
-                return false // cross prod 0 if lines parallel
-            }
-            v3 = {x : p0.x - p2.x, y : p0.y - p2.y};
-            // get unit distance along line p2 p3
-            u2 = (v1.x * v3.y - v1.y * v3.x) / cross;
-            // is intercept on line p2, p3
-            if (u2 >= 0 && u2 <= 1){
-                // get unit distance on line p0, p1;
-                u1 = (v2.x * v3.y - v2.y * v3.x) / cross;
-                // return true if on line else false.
-                return (u1 >= 0 && u1 <= 1);
-            }
-            return false; // no intersect;
-        }
-        // return function with closure for optimisation.
-        return isIntersecting;
-    })();
-
     /** Distance in pixels between p1 and p2. */
     function distance(p1, p2) {
         var deltaX = p1.x - p2.x;
         var deltaY = p1.y - p2.y;
         return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
-    }
-
-    /** Cross product for two sides, 0 for parallel lines. */
-    function crossProduct(side1, side2) {
-        const v1 = subPoints(side1.p1, side1.p0);
-        const v2 = subPoints(side2.p1, side2.p0);
-        return v1.x * v2.y - v1.y * v2.x
-    }
-
-    /** Return distance between two given lines. */
-    function linesDistance(l1, l2) {
-        // lines are y = mx + b1, y = mx + b2
-        const m = (l1.p1.y - l1.p0.y) / (l1.p1.x - l1.p0.x);
-        const b1 = l1.p1.y - m * l1.p1.x;
-        const b2 = l2.p1.y - m * l2.p1.x;
-        // https://wikipedia.org/wiki/Distance_between_two_straight_lines
-        const distance = Math.abs(b1 - b2) / Math.sqrt(m*m + 1)
-        return distance
-    }
-
-
-    /**
-     * Return a {centerLine, ruler, triangle} dictionary with the line from
-     * triangle to ruler center, the triangle side facing the ruler and the
-     * ruler side facing the triangle.
-     */
-    function getFacingSides() {
-
-        function linesIntersect(l1, l2) {
-            return isIntersecting(l1.p0, l1.p1, l2.p0, l2.p1)
-        }
-
-        const centerLine = { p0: triangle, p1: ruler }
-        var result = { centerLine: centerLine, triangle: null, ruler: null };
-
-        // Find ruler long side intersecting centerLine
-        for (var r = 0; r < 3; r += 2) {
-            var l = rulerSideByIndex(r);
-            if (linesIntersect(centerLine, l)) {
-                result.ruler = l;
-                break;
-            }
-        }
-        if (result.ruler == null) {
-            // No facing long ruler edge.
-            console.log("getFacingSides: got no ruler side:")
-        }
-//        console.log("getFacingSides: got ruler side:", result.ruler)
-        // Find the triangle side intersecting centerLine
-        for (var t = 0; t < 3; t += 1) {
-            var l = triangleSideByIndex(t);
-            if (linesIntersect(centerLine, l)) {
-                result.triangle = l;
-                break;
-            }
-        }
-        if (result.triangle == null)
-            console.log("getFacingSides: got no triangle side:")
-        return result;
     }
 
     /** Angle in radians  between line from p1 to p2 and y == 0 line, ccw. */
@@ -306,70 +168,6 @@ function onBodyLoad() {
         ctx.restore();
     }
 
-    /**
-     * Cases:
-     *  - Not colliding, no potential align. rulerSide == null,
-     *    distance = -2
-     *  - Not colliding, potential align (two triangle sides facing a long
-     *    ruler side), but not parallel: distance = -1
-     *  - Not colliding, parallel sides. rulerSide and triangleSide
-     *    defined, distance reflects distance.
-     *  - Colliding: collision.isSameSide == false. Two sides defined,
-     *    not aligned.
-     *  - Colliding: collision.isSameSide == true. collision.notCollided
-     *    reflects the triangle side contained by ruler, align possible.
-    */
-    function checkAlign() {
-
-       // Cross product, 0 for parallel lines.
-        function crossProduct(side1, side2) {
-            const v1 = subPoints(side1.p1, side1.p0);
-            const v2 = subPoints(side2.p1, side2.p0);
-            return v1.x * v2.y - v1.y * v2.x
-        }
-
-        function linesIntersect(l1, l2) {
-            return isIntersecting(l1.p0, l1.p1, l2.p0, l2.p1)
-        }
-
-        // Distance between two lines.
-        function linesDistance(l1, l2) {
-            // lines are y = mx + b1, y = mx + b2
-            const m = (l1.p1.y - l1.p0.y) / (l1.p1.x - l1.p0.x);
-            const b1 = l1.p1.y - m * l1.p1.x;
-            const b2 = l2.p1.y - m * l2.p1.x;
-            // https://wikipedia.org/wiki/Distance_between_two_straight_lines
-            const distance = Math.abs(b1 - b2) / Math.sqrt(m*m + 1)
-            return distance
-        }
-
-        if (distance(triangle, ruler) > triangle.height/2 + 100)
-            // Too far away to align
-            return;
-        console.log("Align: close enough")
-
-        // triangle center-> ruler center line
-        const centerLine = { p0: triangle, p1: ruler }
-
-        // Find ruler long side intersecting centerLine
-        const facingSides = getFacingSides();
-        if (facingSides.ruler != null && facingSides.triangle != null ) {
-                const cross =
-                    crossProduct(facingSides.ruler, facingSides.triangle);
-                if (cross < 1) {
-                    align.distance =
-                        linesDistance(facingSides.ruler, facingSides.triangle);
-                    document.getElementById('distance').innerHTML = align.distance; //FIXME
-                    console.log("Using parallel triangle side:");
-                } else {
-                    console.log("Using non-parallel triangle side")
-                    align.distance = -1;
-                }
-        } else {
-            console.log("checkAlign: No facing triangle or ruler long side.");
-        }
-    }
-
     /** Setup the ruler object. */
     function initRuler() {
         getRulerCorners();
@@ -408,16 +206,6 @@ function onBodyLoad() {
         ruler.x = p.x;
         ruler.y = p.y;
         getRulerCorners();
-/***
-        if (collisions-length > 0) {
-            document.getElementById('collision').innerHTML = "Yes"; //FIXME
-            ruler.x = oldpos.x
-            ruler.y = oldpos.y
-            getRulerCorners();
-        }
-        else
-            document.getElementById('collision').innerHTML = "no"; //FIXME
-**/
         draw(ruler, rulerCanvas);
     }
 
@@ -461,255 +249,16 @@ function onBodyLoad() {
         }
         image.src = TRIANGLE_SRC;
     }
-    /**
-     * Triangle corner collides in ruler side. Ignore movements straight
-     * into ruler. Other movements into ruler rotates the triangle around
-     * the colliding corner point to align with the ruler. If the angle
-     * difference is "small", triangle aligns with ruler.
-     */
-    function cornerCollideTriangle(oldpos) {
-
-        /**
-         * Compute the smallest possible triangle rotation which aligns
-         * one of the triangle sides t1 and t2 with ruler side r1. The
-         * result is either a clockwise rotation of t1 or a counter-clockwise
-         * (negative) rotation of t2.
-         */
-        function triangleAlignAngle(t1, t2, r1) {
-            var angle1 =
-                getRelativeAngle(t1.p0, t1.p1, r1.p0, r1.p1) % Math.PI;
-            var angle2 =
-                getRelativeAngle(t2.p0, t2.p1, r1.p0, r1.p1) % Math.PI
-            if (Math.abs(angle1) > Math.abs(angle2))
-                angle1 = Math.PI - angle1
-            else
-                angle2 = Math.PI - angle2
-            return angle1 < angle2 ? angle1 : -angle2
-        }
-
-       /**
-         * Given two collisions and a drag vector compute
-         * whether the triangle should be rotated around the
-         * colliding corner or just pulled away from the ruler.
-         *
-         * Returns:
-         *     - 1 for clockwise rotation, aligns s1
-         *     - 0 for pull away
-         *     - -1 for counter-clockwise rotation, aligns s2
-         */
-        function compareDrag(s1, s2, dragAngle) {
-
-            /** Given angles min, max and a check if min < a <= max */
-            function between(min, a, max) {
-                if (min > max) {
-                    min = (min + 3 * Math.PI) % (2 * Math.PI) - Math.PI
-                    max = (max + 3 * Math.PI) % (2 * Math.PI) - Math.PI
-                }
-                return min < a && a <= max
-            }
-
-            const cwAngle = getAngle(triangle, s1.p0, true);
-            const cornerAngle = getAngle(triangle, s1.p1, true);
-            const ccwAngle = getAngle(triangle, s2.p1, true);
-            //console.log("drag: " + dragAngle/3.14 * 180
-            //    +  ", cw: " + cwAngle/3.14 * 180
-            //    + ", ccw: " + ccwAngle/3.14 * 180
-            //    + ", corner: " + cornerAngle/3.14 *180);
-
-            if (between(cornerAngle, dragAngle, ccwAngle))
-                return -1
-            if (between(cwAngle, dragAngle, cornerAngle))
-                return 1
-            return 0;
-        }
-
-        /**
-         * Rotate triangle around p0 to line (p0, newposition), but
-         * not beyond ruler edge defined by maxAngle.
-         */
-        function rotateCcw(oldpos, p0, maxAngle) {
-            const newAngle = getAngle(p0, triangle)
-            // Determine magnitude and angle for old
-            // and new center relative p0
-            const oldAngle = getAngle(p0, oldpos);
-            var rotAngle = newAngle - oldAngle;
-            rotAngle = Math.abs(rotAngle) > Math.abs(maxAngle) ?
-                maxAngle : rotAngle;
-
-            const center = subPoints(triangle, p0)
-            const length = Math.sqrt(center.x * center.x
-                                     + center.y * center.y)
-            // Compute x,y center displacement when rotating around p0
-            const diff = {
-                x: length * Math.cos(rotAngle),
-                y: -length * Math.sin(rotAngle)
-            };
-            //console.log("p0: ", p0)
-            //console.log("diff: ", diff);
-            //console.log("Old center, x: " + triangle.x + ", y: " + triangle.y);
-            //console.log("length: " + length);
-            triangle.x = p0.x + diff.x
-            triangle.y = p0.y + diff.y
-            //console.log( "New center, x: " + triangle.x + ", y: " + triangle.y);
-            triangle.angle  += rotAngle;
-        }
-
-        if (collisions.length < 2)
-            return;
-        const side1 = triangleSideByIndex(collisions[0][0]);
-        const side2 = triangleSideByIndex(collisions[1][0]);
-        const side3 = rulerSideByIndex(collisions[0][1]);
-        const alignAngle = triangleAlignAngle(side1, side2, side3);
-        console.log("Align angle: " + alignAngle / 3.14 * 180);
-        const dragAngle = getAngle(oldpos, triangle, true)
-        const action =
-            compareDrag(side1, side2, dragAngle);
-        if (action == -1) {
-            var a = getAngle(side1.p1, oldpos)
-            var b = getAngle(side1.p1, triangle)
-            var c = b - a;
-            var newAngle = Math.abs(c) > alignAngle ? alignAngle : c;
-            rotateCcw(oldpos, side1.p1, newAngle)
-        }
-        else if (action == 1)
-            console.log("rotate cw")
-        else
-            console.log("drag back, distance: " + align.distance);
-
-        // For now: block movements:
-        triangle.x = oldpos.x
-        triangle.y = oldpos.y
-        collisions = [];
-        // console.log("Corner collide, angle: " + angle/3.14 * 180);
-    }
-
-    /** Align triangle to collided ruler edge. */
-    function alignTriangle() {
-
-        if (align.distance == -2)
-            // We cannot align (no potential sides).
-            return;
-        const facingSides = getFacingSides();
-        if (facingSides.ruler == null || facingSides.triangle == null)
-            // No facing long side, i. e. a short one:
-            return;
-        if (align.distance < 0) {
-            // Get diff between ruler and triangle angle and adjust.
-            const side1 = facingSides.ruler
-            const side2 = facingSides.triangle
-            // const side1 = triangleSideByIndex(collisions[0][0]);
-            // const side2 = triangleSideByIndex(collisions[1][0]);
-            // const rulerSide = rulerSideByIndex(collisions[0][1]);
-            const triangleAngle = getAngle(side1.p0, side1.p1);
-            console.log("Aligning, old angle: " + triangleAngle/3.14 * 180);
-            const rulerAngle = getAngle(side2.p0, side2.p1);
-            const diff =
-                getRelativeAngle(side1.p0, side1.p1,
-                                 side2.p0, side2.p1, true) % Math.PI;
-            triangle.angle += rulerAngle > triangleAngle ? diff : -diff;
-            console.log("Aligning, new angle: " + triangle.angle/3.14 * 180);
-            getTriangleCorners();
-        }
-        const l1 = facingSides.ruler;
-        const l2 = facingSides.triangle;
-        const cp = crossProduct(l1, l2);
-        const distance = linesDistance(l1, l2);
-
-        if (Math.abs(distance) <= 2)
-            // we are aligned!
-            return;
-
-        if (Math.abs(distance) <= 5 ) {
-            console.info("Attaching triangle")
-            const oldPos = {x: triangle.x, y:triangle.y}
-            // Get line perpendicular to ruler and move triangle along it.
-            var toRuler = ruler.angle - Math.PI / 2;
-            if (toRuler < 0)
-                toRuler += Math.PI * 2;
-            if (toRuler > Math.PI * 2)
-                toRuler -= Math.PI * 2;
-            triangle.x += Math.cos(toRuler) * (distance - 1);
-            triangle.y += Math.sin(toRuler) * (distance - 1);
-            // Move back if new triangle pos overlaps ruler.
-            getTriangleCorners();
-            const c1 =
-                isIntersecting(triangle.left, triangle.top, l1.p0, l1.p1);
-            const c2 =
-                isIntersecting(triangle.right, triangle.top, l1.p0, l1.p1);
-            if (c1 || c2) {
-                triangle.x = oldPos.x
-                triangle.y = oldPos.y
-            }
-        }
-    }
-
-    /** Slide triangle along ruler. */
-    function slideTriangle(p) {
-        console.log("Sliding triangle, from %d, %d", triangle.x, triangle.y);
-        console.log("Sliding triangle, drag to : %o", p);
-        const dragAngle =
-            getRelativeAngle(triangle, p, triangle.left, triangle.right);
-        const facingSides = getFacingSides();
-        if (facingSides.triangle == null) {
-            console.log("slideTriangle: No triangle side, giving up.");
-            return;
-        }
-        const side = facingSides.triangle;
-        const slideLeft = getAngle(side.p0, side.p1, true);
-        const slideRight = slideLeft > Math.PI ?
-            slideLeft - Math.PI : slideLeft + Math.PI;
-        const pullBack = slideRight + Math.PI/2;
-        const dist = distance(triangle, p);
-        document.getElementById('distance').innerHTML = dist; //FIXME
-        console.log("dragAngle: " + dragAngle / Math.PI * 180);
-        const absAngle = Math.abs(dragAngle);
-        if (absAngle < Math.PI/4) {
-            triangle.x += dist * Math.sin(slideRight);
-            triangle.y += dist * Math.cos(slideRight);
-            console.log("Sliding right");
-        } else if (absAngle <= Math.PI && absAngle > 3*Math.PI / 4) {
-            triangle.x += dist * Math.sin(slideLeft);
-            triangle.y += dist * Math.cos(slideLeft);
-            console.log("Sliding left");
-        } else if (absAngle < Math.PI) {
-            //triangle.x = p.x;
-            //triangle.y = p.y;
-            console.log("No slide, pulling back");
-        } else
-            console.log("No slide at all.");
-    }
 
     /**
-     * Move triangle to new position p.  Pitfalls:
-     *   - One corner collides with ruler. Handle by rotating
-     *     around colliding corner
-     *   - Two corners collides. Handle by aligning to ruler.
+     * Move triangle to new position p.  
      */
     function moveTriangle(ctx, p) {
         var oldpos = { x: triangle.x, y: triangle.y };
         clear(ctx, triangle);
-        checkAlign();
-        if (align.distance != null && align.distance < 6) {
-                //slideTriangle(p)
-                alignTriangle();
-        } else {
-            triangle.x = p.x;
-            triangle.y = p.y;
-            getTriangleCorners()
-            if (collisions.length == 2)
-                cornerCollideTriangle(oldpos);
-            if (collisions.length > 0) {
-                document.getElementById('collision').innerHTML = "Yes"; //FIXME
-                triangle.x = oldpos.x;
-                triangle.y = oldpos.y;
-                collisions = [];
-            } else {
-                document.getElementById('collision').innerHTML = "No"; //FIXME
-                checkAlign();
-                //if (align.distance >= 0 && align.distance < 12)
-                //    alignTriangle();
-            }
-        }
+        triangle.x = p.x;
+        triangle.y = p.y;
+        getTriangleCorners()
         draw(triangle, triangleCanvas);
         // clear() clears the bounding rect which might damage the ruler, so:
         draw(ruler, rulerCanvas);
@@ -719,7 +268,6 @@ function onBodyLoad() {
     function rotateTriangle(ctx, p, rightHandle = true) {
         const oldpos = { x: triangle.x, y: triangle.y };
         const oldAngle = triangle.angle;
-        const facingSides = getFacingSides();
         clear(ctx, triangle);
 
         // Compute rotation center p0 and baseline angle diff.
@@ -742,7 +290,7 @@ function onBodyLoad() {
         triangle.angle = getAngle(triangle.top, triangle) - Math.PI/2;
         getTriangleCorners();
 
-       draw(triangle, triangleCanvas);
+        draw(triangle, triangleCanvas);
         draw(ruler, rulerCanvas);
     }
 
