@@ -269,47 +269,7 @@ function onBodyLoad() {
         };
     }
 
-    /**
-    * Check if triangle and ruler collides, updates global collision
-    * and align.
-    */
-    function checkCollide() {
-        const linesToCheck = [
-            [triangle.left, triangle.right, ruler.nw, ruler.ne],
-            [triangle.left, triangle.right, ruler.ne, ruler.se],
-            [triangle.left, triangle.right, ruler.se, ruler.sw],
-            [triangle.left, triangle.right, ruler.sw, ruler.nw],
-            [triangle.right, triangle.top, ruler.nw, ruler.ne],
-            [triangle.right, triangle.top, ruler.ne, ruler.se],
-            [triangle.right, triangle.top, ruler.se, ruler.sw],
-            [triangle.right, triangle.top, ruler.sw, ruler.nw],
-            [triangle.top, triangle.left, ruler.nw, ruler.ne],
-            [triangle.top, triangle.left, ruler.ne, ruler.se],
-            [triangle.top, triangle.left, ruler.se, ruler.sw],
-            [triangle.top, triangle.left, ruler.sw, ruler.nw]
-        ];
-
-        collisions = [];
-        var ix;
-        for (ix = 0; ix < linesToCheck.length; ix += 1) {
-            if (isIntersecting.apply(this, linesToCheck[ix])) {
-                const rulerSide = Math.floor(ix % 4)
-                const triangleSide = Math.floor(ix / 4)
-                collisions.push([triangleSide, rulerSide]);
-            }
-        }
-        if (collisions.length == 0)
-            return;
-        if (collisions[0][0] == 0 && collisions[1][0] == 2) {
-             // Re-arrange left and top corner so that top follows
-             // left to fulfill that side2 is clockwise of side1.
-             var tmp = collisions[0];
-             collisions[0] = collisions[1]
-             collisions[1] = tmp;
-        }
-    }
-
-    /*** Draw a circle (debug) */
+   /*** Draw a circle (debug) */
     function drawCircle(ctx, p) {
         const radius = 30;
         ctx.beginPath();
@@ -448,7 +408,7 @@ function onBodyLoad() {
         ruler.x = p.x;
         ruler.y = p.y;
         getRulerCorners();
-        checkCollide();
+/***
         if (collisions-length > 0) {
             document.getElementById('collision').innerHTML = "Yes"; //FIXME
             ruler.x = oldpos.x
@@ -457,6 +417,7 @@ function onBodyLoad() {
         }
         else
             document.getElementById('collision').innerHTML = "no"; //FIXME
+**/
         draw(ruler, rulerCanvas);
     }
 
@@ -483,16 +444,6 @@ function onBodyLoad() {
         ruler.y = p0.y + cos*relCenter.y + sin*relCenter.x
         ruler.angle = angle;
         getRulerCorners();
-        checkCollide();
-  /***
-        if (collisions.length > 0) {
-            document.getElementById('collision').innerHTML = "Yes"; //FIXME
-            ruler.angle = oldAngle;
-            getRulerCorners();
-        }
-        else
-            document.getElementById('collision').innerHTML = "no"; //FIXME
-  ***/
         draw(ruler, rulerCanvas);
     }
 
@@ -745,7 +696,6 @@ function onBodyLoad() {
             triangle.x = p.x;
             triangle.y = p.y;
             getTriangleCorners()
-            checkCollide();
             if (collisions.length == 2)
                 cornerCollideTriangle(oldpos);
             if (collisions.length > 0) {
@@ -792,33 +742,7 @@ function onBodyLoad() {
         triangle.angle = getAngle(triangle.top, triangle) - Math.PI/2;
         getTriangleCorners();
 
-        checkCollide()
-    /***
-        if (collisions.length > 0) {
-            // FIXME: MOve to correct position "close to" ruler.
-            document.getElementById('collision').innerHTML = "Yes"; //FIXME
-            // Find the k and l values for y = kx + l
-            var triangle_k = (p1.y - p0.y)/(p1.x - p0.x)
-            triangle_k = -1/triangle_k  // Perpendicular.
-            const triangle_l = p0.y - triangle_k * p0.x
-
-            const ruler = facingSides.ruler
-            const ruler_k = (ruler.p1.y - ruler.p0.y)/(ruler.p1.x - ruler.p0.x)
-            const ruler_l = ruler.p0.y - ruler_k * ruler.p0.x;
-            // Find point where line perpendicular to triangle from p0
-            // and ruler edge line from ruler.p0 intersects
-            const newpos =
-                getIntersection(triangle_k, triangle_l, ruler_k, ruler_l)
-            triangle.x = newpos.x
-            triangle.y = newpos.y
-            triangle.angle = oldAngle;
-            getTriangleCorners();
-            collisions = [];
-        }
-        else
-            document.getElementById('collision').innerHTML = "No"; //FIXME
-  ***/
-        draw(triangle, triangleCanvas);
+       draw(triangle, triangleCanvas);
         draw(ruler, rulerCanvas);
     }
 
