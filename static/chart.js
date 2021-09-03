@@ -484,6 +484,7 @@ function onBodyLoad() {
         ruler.angle = angle;
         getRulerCorners();
         checkCollide();
+  /***
         if (collisions.length > 0) {
             document.getElementById('collision').innerHTML = "Yes"; //FIXME
             ruler.angle = oldAngle;
@@ -491,6 +492,7 @@ function onBodyLoad() {
         }
         else
             document.getElementById('collision').innerHTML = "no"; //FIXME
+  ***/
         draw(ruler, rulerCanvas);
     }
 
@@ -791,6 +793,7 @@ function onBodyLoad() {
         getTriangleCorners();
 
         checkCollide()
+    /***
         if (collisions.length > 0) {
             // FIXME: MOve to correct position "close to" ruler.
             document.getElementById('collision').innerHTML = "Yes"; //FIXME
@@ -814,6 +817,7 @@ function onBodyLoad() {
         }
         else
             document.getElementById('collision').innerHTML = "No"; //FIXME
+  ***/
         draw(triangle, triangleCanvas);
         draw(ruler, rulerCanvas);
     }
